@@ -18,6 +18,7 @@ class GitterFayeSubscriber {
   Stream _socketStream;
   var _timeout = 120000;
   Timer _timeoutTimer;
+  Timer _reconnectTimer;
 
   String get clientId => _clientId;
 
@@ -54,14 +55,13 @@ class GitterFayeSubscriber {
   }
 
   _initListener() {
-    _listener ??= _listen((_) {
+    _listener ??= _listen(null, onError: (_) {
       _timeoutTimer?.cancel();
-      _timeoutTimer =
-      new Timer(new Duration(milliseconds: _timeout - 1000), _connect);
+      new Timer(new Duration(milliseconds: _timeout - 1000), reset);
     });
   }
 
-  _ping() {
+  _ping(Timer timer) {
     final message = {
       "data":{"reason":"ping"}
     };
@@ -75,6 +75,7 @@ class GitterFayeSubscriber {
     _listener = null;
     _socket = await WebSocket.connect(_urlWs);
     _socketStream = _socket.asBroadcastStream();
+    _reconnectTimer = null;
 
     _initListener();
 
@@ -82,9 +83,39 @@ class GitterFayeSubscriber {
     _timeout = res.advice["timeout"];
     _timeoutTimer?.cancel();
     if (keepAlive) {
+      _mapper["/api/v1/ping2"] = [];
+      subscribe("/api/v1/ping2", (List<GitterFayeMessage> msgs) {
+        int interval = null;
+        for (GitterFayeMessage msg in msgs) {
+          if (!msg.successful && msg.advice != null) {
+            interval = msg.advice["interval"];
+            break;
+          }
+        }
+        if (interval != null && _reconnectTimer == null) {
+          _timeoutTimer?.cancel();
+          _reconnectTimer = new Timer(new Duration(milliseconds: interval), reset);
+        }
+      });
       _timeoutTimer =
-          new Timer(new Duration(milliseconds: _timeout ~/ 2), _ping);
+          new Timer.periodic(new Duration(milliseconds: _timeout ~/ 2), _ping);
     }
+  }
+
+  reset() async {
+    await connect();
+    Map<String, List<OnMessage>> _previousMapper = {};
+    _mapper.forEach((key, value) {
+      _previousMapper[key] = value;
+    });
+    _mapper.clear();
+    print(_previousMapper.toString());
+    _previousMapper.forEach((channel, onMessage) {
+      print("subscribing: ${channel}");
+      if (onMessage.isNotEmpty) {
+        subscribe(channel, onMessage.last);
+      }
+    });
   }
 
   Future<GitterFayeMessage> _connect() async {
@@ -104,7 +135,7 @@ class GitterFayeSubscriber {
           }
           _mapper[msg.channel] = [];
         } else if (msg.successful == false) {
-            throw new Exception("'connect' failed");
+          throw new Exception("'connect' failed");
         }
       }
     });
@@ -177,7 +208,7 @@ class GitterFayeSubscriber {
       subscribe("/api/v1/user/$userId/rooms", handler);
 
   subscribeToUserRoomUnreadItems(String roomId, String userId,
-          [OnMessage handler]) =>
+      [OnMessage handler]) =>
       subscribe("/api/v1/user/$userId/rooms/$roomId/unreadItems", handler);
 
   _dispatch(List<GitterFayeMessage> events) {
@@ -199,26 +230,26 @@ class GitterFayeSubscriber {
   }
 
   StreamSubscription<List<GitterFayeMessage>> _listen(OnMessage onData,
-          {Function onError,
-          void onDone(),
-          bool cancelOnError,
-          bool dispatch: true}) =>
-      _socketStream.listen((data) {
-        final decode = JSON.decode(data);
-        var messages;
-        if (decode is Iterable) {
-          messages =
-              decode.map((d) => new GitterFayeMessage.fromJson(d)).toList();
-        } else {
-          messages = [new GitterFayeMessage.fromJson(decode)];
-        }
-        if (dispatch) {
-          _dispatch(messages);
-        }
-        if (onData != null) {
-          onData(messages);
-        }
-      }, onDone: onDone, cancelOnError: cancelOnError);
+      {Function onError,
+        void onDone(),
+        bool cancelOnError,
+        bool dispatch: true}) =>
+    _socketStream.listen((data) {
+      final decode = JSON.decode(data);
+      var messages;
+      if (decode is Iterable) {
+        messages =
+            decode.map((d) => new GitterFayeMessage.fromJson(d)).toList();
+      } else {
+        messages = [new GitterFayeMessage.fromJson(decode)];
+      }
+      if (dispatch) {
+        _dispatch(messages);
+      }
+      if (onData != null) {
+        onData(messages);
+      }
+    }, onDone: onDone, cancelOnError: cancelOnError, onError: onError);
 
   close() {
     _socket?.close();
