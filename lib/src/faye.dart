@@ -63,7 +63,7 @@ class GitterFayeSubscriber {
 
   _ping(Timer timer) {
     final message = {
-      "data":{"reason":"ping"}
+      "data": {"reason": "ping"}
     };
     final channel = "/api/v1/ping2";
     _send(channel, message);
@@ -94,11 +94,12 @@ class GitterFayeSubscriber {
         }
         if (interval != null && _reconnectTimer == null) {
           _timeoutTimer?.cancel();
-          _reconnectTimer = new Timer(new Duration(milliseconds: interval), reset);
+          _reconnectTimer =
+          new Timer(new Duration(milliseconds: interval), reset);
         }
       });
       _timeoutTimer =
-          new Timer.periodic(new Duration(milliseconds: _timeout ~/ 2), _ping);
+      new Timer.periodic(new Duration(milliseconds: _timeout ~/ 4), _ping);
     }
   }
 
@@ -149,14 +150,14 @@ class GitterFayeSubscriber {
     message ??= {};
     message["clientId"] = clientId;
     message["channel"] = channel;
-    message["id"]=  _generateId();
+    message["id"] = _generateId();
 
     _socket.add(JSON.encode(message));
   }
 
   subscribe(String subscription, [OnMessage handler]) {
     _initListener();
-    _mapper[subscription] ??= [];
+    _mapper[subscription] = [];
     if (handler != null) {
       _mapper[subscription].add(handler);
     }
@@ -172,7 +173,7 @@ class GitterFayeSubscriber {
 
   unsubscribe(String subscription, [OnMessage handler]) {
     if (handler != null) {
-      _mapper[subscription].remove(handler);
+      _mapper[subscription] = [];
     }
 
     final message = {
@@ -212,6 +213,7 @@ class GitterFayeSubscriber {
   _dispatch(List<GitterFayeMessage> events) {
     final _mapping = <String, List<GitterFayeMessage>>{};
     events.forEach((GitterFayeMessage msg) {
+      print(msg.toString());
       _mapping[msg.subscription ?? msg.channel] ??= [];
       _mapping[msg.subscription ?? msg.channel].add(msg);
     });
@@ -230,24 +232,24 @@ class GitterFayeSubscriber {
   StreamSubscription<List<GitterFayeMessage>> _listen(OnMessage onData,
       {Function onError,
         void onDone(),
-        bool cancelOnError,
+        bool cancelOnError: false,
         bool dispatch: true}) =>
-    _socketStream.listen((data) {
-      final decode = JSON.decode(data);
-      var messages;
-      if (decode is Iterable) {
-        messages =
-            decode.map((d) => new GitterFayeMessage.fromJson(d)).toList();
-      } else {
-        messages = [new GitterFayeMessage.fromJson(decode)];
-      }
-      if (dispatch) {
-        _dispatch(messages);
-      }
-      if (onData != null) {
-        onData(messages);
-      }
-    }, onDone: onDone, cancelOnError: cancelOnError, onError: onError);
+      _socketStream.listen((data) {
+        final decode = JSON.decode(data);
+        var messages;
+        if (decode is Iterable) {
+          messages =
+              decode.map((d) => new GitterFayeMessage.fromJson(d)).toList();
+        } else {
+          messages = [new GitterFayeMessage.fromJson(decode)];
+        }
+        if (dispatch) {
+          _dispatch(messages);
+        }
+        if (onData != null) {
+          onData(messages);
+        }
+      }, onDone: onDone, cancelOnError: cancelOnError, onError: onError);
 
   close() {
     _socket?.close();
