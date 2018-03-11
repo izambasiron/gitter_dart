@@ -109,9 +109,7 @@ class GitterFayeSubscriber {
       _previousMapper[key] = value;
     });
     _mapper.clear();
-    print(_previousMapper.toString());
     _previousMapper.forEach((channel, onMessage) {
-      print("subscribing: ${channel}");
       if (onMessage.isNotEmpty) {
         subscribe(channel, onMessage.last);
       }
