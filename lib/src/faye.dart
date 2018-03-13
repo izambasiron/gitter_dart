@@ -257,7 +257,7 @@ class GitterFayeSubscriber {
     _timeoutTimer?.cancel();
   }
 
-  bool get isClose => _socket.closeCode != null;
+  bool get isClose => _socket.readyState >= WebSocket.CLOSING;
 }
 
 typedef void OnMessage(List<GitterFayeMessage> event);
