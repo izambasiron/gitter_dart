@@ -73,6 +73,9 @@ class GitterFayeSubscriber {
     await _handshake();
     _listener?.cancel();
     _listener = null;
+    if (_socket != null && _socket?.readyState >= WebSocket.CONNECTING) {
+      await _socket.close();
+    }
     _socket = await WebSocket.connect(_urlWs);
     _socketStream = _socket.asBroadcastStream();
     _reconnectTimer = null;
@@ -83,7 +86,6 @@ class GitterFayeSubscriber {
     _timeout = res.advice["timeout"];
     _timeoutTimer?.cancel();
     if (keepAlive) {
-      _mapper["/api/v1/ping2"] = [];
       subscribe("/api/v1/ping2", (List<GitterFayeMessage> msgs) {
         int interval = null;
         for (GitterFayeMessage msg in msgs) {
@@ -258,6 +260,8 @@ class GitterFayeSubscriber {
   }
 
   bool get isClose => _socket.readyState >= WebSocket.CLOSING;
+
+  bool get isTicking => _timeoutTimer.isActive;
 }
 
 typedef void OnMessage(List<GitterFayeMessage> event);

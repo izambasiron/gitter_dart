@@ -43,13 +43,13 @@ class MeApi {
 
   Future<User> get() async {
     final http.Response response =
-        await http.get("$_baseUrl/", headers: _getHeaders(token));
+    await http.get("$_baseUrl/", headers: _getHeaders(token));
     return new User.fromJson(_getResponseBody(response));
   }
 
   Future<Iterable<Room>> rooms() async {
     final http.Response response =
-        await http.get("$_baseUrl/rooms", headers: _getHeaders(token));
+    await http.get("$_baseUrl/rooms", headers: _getHeaders(token));
     final json = _getResponseBody(response);
     final rooms = json.map((map) => new Room.fromJson(map)).toList();
     // TODO: better sort
@@ -84,7 +84,7 @@ class UserApi {
     String url = "$_baseUrl?${mapToQuery(
         {"q": query, "limit": limit, "type": type})}";
     final http.Response response =
-        await http.get(url, headers: _getHeaders(_token));
+    await http.get(url, headers: _getHeaders(_token));
     final Iterable<Map> json = _getResponseBody(response)["results"];
     return json.map((map) => new User.fromJson(map)).toList();
   }
@@ -117,22 +117,25 @@ class RoomApi {
     String url = "$_baseUrl?${mapToQuery(
         {"q": query, "limit": limit, "type": type})}";
     final http.Response response =
-        await http.get(url, headers: _getHeaders(token));
+    await http.get(url, headers: _getHeaders(token));
     final Iterable<Map> json = _getResponseBody(response)["results"];
     return json.map((map) => new Room.fromJson(map)).toList();
   }
 
   Future<Iterable<Message>> messagesFromRoomId(String id,
-      {int skip: 0, int limit: 50, String beforeId}) async {
+      {int skip: 0, int limit: 50, String beforeId, String afterId}) async {
     var params = <String, dynamic>{"skip": skip, "limit": limit};
 
     if (beforeId != null) {
       params["beforeId"] = beforeId;
     }
+    if (afterId != null) {
+      params["afterId"] = afterId;
+    }
 
     String url = "$_baseUrl/$id/chatMessages?${mapToQuery(params)}";
     final http.Response response =
-        await http.get(url, headers: _getHeaders(token));
+    await http.get(url, headers: _getHeaders(token));
     final Iterable<Map> json = _getResponseBody(response);
     return json
         .map<Message>((Map message) => new Message.fromJson(message))
@@ -183,7 +186,7 @@ class RoomApi {
 
     _streamMapper[roomId] = responseStream.stream.asBroadcastStream()
         .map((Iterable<int> data) =>
-            (new String.fromCharCodes(data)).replaceAll("\r", ""))
+        (new String.fromCharCodes(data)).replaceAll("\r", ""))
         .where((String json) => json != " \n" && json != "\n")
         .map((String json) => new Message.fromJson(JSON.decode(json)))
         .asBroadcastStream();
@@ -222,14 +225,14 @@ class GroupApi {
 
   Future<Iterable<Group>> get() async {
     final http.Response response =
-        await http.get("$_baseUrl/", headers: _getHeaders(token));
+    await http.get("$_baseUrl/", headers: _getHeaders(token));
     final Iterable<Map> json = _getResponseBody(response);
     return json.map((map) => new Group.fromJson(map)).toList();
   }
 
   Future<Iterable<Room>> roomsOf(String groupId) async {
     final http.Response response =
-        await http.get("$_baseUrl/$groupId/rooms", headers: _getHeaders(token));
+    await http.get("$_baseUrl/$groupId/rooms", headers: _getHeaders(token));
     final Iterable<Map> json = _getResponseBody(response);
     return json.map((map) => new Room.fromJson(map)).toList();
   }
