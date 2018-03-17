@@ -19,6 +19,7 @@ class GitterFayeSubscriber {
   var _timeout = 120000;
   Timer _timeoutTimer;
   Timer _reconnectTimer;
+  DateTime _lastPingResponse;
 
   String get clientId => _clientId;
 
@@ -92,6 +93,8 @@ class GitterFayeSubscriber {
           if (!msg.successful && msg.advice != null) {
             interval = msg.advice["interval"];
             break;
+          } else {
+            _lastPingResponse = new DateTime.now();
           }
         }
         if (interval != null && _reconnectTimer == null) {
@@ -262,12 +265,13 @@ class GitterFayeSubscriber {
   bool get isClose => _socket.readyState >= WebSocket.CLOSING;
 
   bool get isTicking => _timeoutTimer.isActive;
+
+  bool get isResponding => (new DateTime.now().millisecond - _lastPingResponse.millisecond) < _timeout;
 }
 
 typedef void OnMessage(List<GitterFayeMessage> event);
 
 class GitterFayeNotifications {
-  static const String unreadItems =
-      "unread_items"; // data: { notification: "unread_items", items: {} }, ext: { c: COUNT } }
+  static const String unreadItems = "unread_items"; // data: { notification: "unread_items", items: {} }, ext: { c: COUNT } }
   static const String unreadItemsRemoved = "unread_items_removed";
 }

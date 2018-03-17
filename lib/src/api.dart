@@ -103,6 +103,15 @@ class UserApi {
     final json = _getResponseBody(response);
     return new Room.fromJson(json);
   }
+
+  userMarkMessagesAsReadOfRoom(String userId, String roomId, List<String> messageIds) async {
+    final Map<String, List<String>> json = {"chat": messageIds};
+    await http.post(
+      "$_baseUrl/$userId/rooms/$roomId/unreadItems",
+      body: JSON.encode(json),
+      headers: _getHeaders(_token),
+    );
+  }
 }
 
 class RoomApi {
