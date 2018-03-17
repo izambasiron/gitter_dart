@@ -6,21 +6,6 @@ import 'dart:convert';
 import 'package:gitter/gitter.dart';
 import 'package:http/http.dart' as http;
 
-DateTime parseLastAccessTime(String lastAccessTime) {
-  // fixme: DateTime.parse ?
-  final regExp = new RegExp(
-      r"^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})");
-  final match = regExp.firstMatch(lastAccessTime);
-  return new DateTime(
-    int.parse(match.group(1)),
-    int.parse(match.group(2)),
-    int.parse(match.group(3)),
-    int.parse(match.group(4)),
-    int.parse(match.group(5)),
-    int.parse(match.group(6)),
-  );
-}
-
 String mapToQuery(Map<String, dynamic> map, {Encoding encoding}) {
   var pairs = <List>[];
   map.forEach((key, value) => pairs.add([key, value]));
@@ -52,14 +37,6 @@ class MeApi {
     await http.get("$_baseUrl/rooms", headers: _getHeaders(token));
     final json = _getResponseBody(response);
     final rooms = json.map((map) => new Room.fromJson(map)).toList();
-    // TODO: better sort
-    // fixme: should we do that here ?
-    rooms
-      ..removeWhere((Room room) => room.lastAccessTime == null)
-      ..sort((Room prev, Room next) => parseLastAccessTime(next.lastAccessTime)
-          .compareTo(parseLastAccessTime(prev.lastAccessTime)))
-      ..sort((Room prev, Room next) =>
-          next.unreadItems.compareTo(prev.unreadItems));
     return rooms;
   }
 }
